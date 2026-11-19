@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""news-image-20261119 v3 — front page for Thursday 19 November 2026.
+"""news-image-20261119 v4 — front page for Thursday 19 November 2026.
 
 One 1024x1024 JPEG, drawn entirely with Pillow (no AI images, no
-network), in the winner genre: giant serif date masthead, a region
-breakdown bar, three big illustrated lead stories, ten numbered
-illustrated cards (4-13), a dotted world map with pins, and a numbered
-ALSO ON list (14-50) — 50 verified stories, seven regions, one day.
-All text is drawn (no AI text); every illustration is drawn
-programmatically. Full story list with sources: STORIES.md.
-
-Deterministic: one fixed random seed, no timestamps, no network.
-Two runs produce identical bytes. Saves JPEG as entry.png.
+network). v4 vs v3 (rank #205, 98.03%): same 50 stories (STORIES.md
+unchanged), same winner genre, but the upgrades the top entries all
+share and v3 lacked: a "day in numbers" KPI strip, a coloured
+segmented region bar, a bigger serif masthead with a red italic deck
+line, taller hero/card art, a dark dotted world map with NUMBERED
+pins, and the €45 BILLION card art no longer clipped. Deterministic:
+one fixed random seed, no timestamps, no network. Two runs produce
+identical bytes. Saves JPEG as entry.png.
 """
 import math
 import os
@@ -250,10 +249,14 @@ def scene_voyager(d, x, y, w, h):
 
 
 def scene_eu_ukraine(d, x, y, w, h):
-    """EU flag field: blue, circle of gold stars, big EUR 45bn figure."""
+    """EU flag field: blue, circle of gold stars, big EUR 45bn figure.
+
+    v4 fix: the figure is drawn SMALLER and HIGHER (v3 drew it at
+    0.40*h at the very bottom, so card strips clipped its lower half).
+    """
     d.rectangle([x, y, x + w, y + h], fill=(0, 51, 153))
     # star circle, kept small and high so the figure below stays clear
-    cx, cy, r = x + w * 0.5, y + h * 0.26, min(w, h) * 0.20
+    cx, cy, r = x + w * 0.5, y + h * 0.22, min(w, h) * 0.17
     for i in range(12):
         ang = math.radians(i * 30 - 90)
         sx = cx + r * math.cos(ang)
@@ -262,10 +265,11 @@ def scene_eu_ukraine(d, x, y, w, h):
                    (sx + 3, sy + 2), (sx + 4, sy + 6), (sx, sy + 4),
                    (sx - 4, sy + 6), (sx - 3, sy + 2), (sx - 6, sy - 1),
                    (sx - 2, sy - 2)], fill=(255, 204, 0))
-    f_big = font(SANS_B, int(h * 0.40))
+    f_big = font(SANS_B, int(h * 0.30))
     t1 = "€45 BILLION"
     tw = d.textlength(t1, font=f_big)
-    d.text((x + (w - tw) / 2, y + h - 32), t1, font=f_big, fill=(255, 255, 255))
+    d.text((x + (w - tw) / 2, y + h * 0.52), t1, font=f_big,
+           fill=(255, 255, 255))
 
 
 def scene_gaza(d, x, y, w, h):
@@ -455,10 +459,11 @@ def scene_ai_cyber(d, x, y, w, h):
 
 # ------------------------------------------------------------------ layout
 def masthead(d):
-    d.rectangle([0, 0, W, 88], fill=NAVY)
-    d.rectangle([0, 88, W, 92], fill=GOLD)
-    f_title = font(SERIF_B, 27)
-    f_date = font(SERIF_B, 42)
+    """v4: taller navy band, bigger gold serif date (48px, was 42)."""
+    d.rectangle([0, 0, W, 94], fill=NAVY)
+    d.rectangle([0, 94, W, 97], fill=GOLD)
+    f_title = font(SERIF_B, 26)
+    f_date = font(SERIF_B, 48)
     f_side = font(SANS_B, 12)
     title = "THE WORLD TODAY"
     tw = d.textlength(title, font=f_title)
@@ -470,24 +475,67 @@ def masthead(d):
     d.text((W - MX - 92, 12), "50 STORIES", font=f_side, fill=(150, 162, 190))
 
 
+def deck_line(d):
+    """v4 NEW: red italic serif deck line under the masthead, the
+    winner-genre second headline."""
+    y = 97
+    f = font(SERIF_I, 16)
+    line = ("A three-way summit in Shenzhen  ·  GTA VI opens worldwide  ·  "
+            "Anthropic's record debut")
+    tw = d.textlength(line, font=f)
+    d.text(((W - tw) / 2, y + 3), line, font=f, fill=RED)
+
+
 def region_bar(d):
-    y = 92
-    d.rectangle([0, y, W, 114], fill=(232, 226, 214))
-    d.line([(0, 114), (W, 114)], fill=PANEL_LINE, width=1)
-    f = font(SANS_B, 13)
-    parts = [("50 STORIES", RED), ("EUROPE 8", INK), ("MIDDLE EAST 5", INK),
-             ("ASIA 10", INK), ("AFRICA 4", INK), ("AMERICAS 14", INK),
-             ("OCEANIA 2", INK), ("WORLD 7", INK)]
-    # measure and centre the whole line
-    sep = "  •  "
-    total = d.textlength(sep.join(p[0] for p in parts), font=f)
-    x = (W - total) / 2
+    """v4: coloured segmented bar with white counts (v3 was a plain
+    text line). Equal segments, region colours."""
+    y = 119
+    h = 26
+    parts = [("EUROPE 8", (31, 78, 121)), ("MIDDLE EAST 5", (139, 90, 43)),
+             ("ASIA 10", (178, 34, 34)), ("AFRICA 4", (166, 124, 0)),
+             ("AMERICAS 14", (46, 125, 50)), ("OCEANIA 2", (106, 61, 154)),
+             ("WORLD 7", (90, 90, 90))]
+    f = font(SANS_B, 11)
+    seg = CW / len(parts)
     for i, (txt, col) in enumerate(parts):
-        d.text((x, y + 4), txt, font=f, fill=col)
-        x += d.textlength(txt, font=f)
-        if i < len(parts) - 1:
-            d.text((x, y + 4), sep, font=f, fill=GREY)
-            x += d.textlength(sep, font=f)
+        x = MX + i * seg
+        d.rectangle([x, y, x + seg, y + h], fill=col)
+        tw = d.textlength(txt, font=f)
+        d.text((x + (seg - tw) / 2, y + 6), txt, font=f, fill=(255, 255, 255))
+    d.line([(0, y + h), (W, y + h)], fill=PANEL_LINE, width=1)
+
+
+# KPI strip: six big numbers of the day, all taken from STORIES.md.
+KPI = [
+    ("$115.8bn", "Nvidia's quarter, up 103%"),
+    ("€45bn", "EU loan proposed for Kyiv"),
+    ("$2.3bn", "IMF unlocks for Egypt"),
+    ("3.91m", "Japan visitors — a record"),
+    ("561", "Dow points lost, to 50,198"),
+    ("13 yrs", "GTA VI wait ends at midnight"),
+]
+
+
+def kpi_strip(d):
+    """v4 NEW: 'the day in numbers' band — every top entry has one,
+    v3 had none."""
+    y = 145
+    h = 54
+    d.line([(MX, y), (W - MX, y)], fill=PANEL_LINE, width=1)
+    d.line([(MX, y + h), (W - MX, y + h)], fill=PANEL_LINE, width=1)
+    f_num = font(SERIF_B, 23)
+    f_cap = font(SANS, 10)
+    col_w = CW / len(KPI)
+    for i, (num, cap) in enumerate(KPI):
+        cx = MX + i * col_w
+        if i:
+            d.line([(cx, y + 8), (cx, y + h - 8)], fill=PANEL_LINE, width=1)
+        tw = d.textlength(num, font=f_num)
+        d.text((cx + (col_w - tw) / 2, y + 4), num, font=f_num, fill=RED)
+        for j, line in enumerate(wrap(d, cap, f_cap, col_w - 14)):
+            lw = d.textlength(line, font=f_cap)
+            d.text((cx + (col_w - lw) / 2, y + 31 + j * 12), line,
+                   font=f_cap, fill=DECK)
 
 
 def number_circle(d, x, y, n, r=13):
@@ -517,22 +565,23 @@ def scene_scaled(d, scene, x, y, w, h, scale=2):
 
 
 def hero_panel(d, x, y, w, h, num, kicker, scene, headline, deck):
+    """v4: taller art (112px, was 108), bigger serif headline (21px)."""
     d.rectangle([x, y, x + w, y + h], fill=(255, 255, 255),
                 outline=PANEL_LINE, width=1)
     d.rectangle([x, y, x + w, y + 5], fill=RED)
-    ih = 108
+    ih = 112
     scene_scaled(d, scene, x + 1, y + 6, w - 2, ih - 1)
     d.line([(x, y + 5 + ih), (x + w, y + 5 + ih)], fill=PANEL_LINE, width=1)
-    number_circle(d, x + 18, y + 20, num, r=14)
+    number_circle(d, x + 20, y + 22, num, r=15)
     ty = y + 5 + ih + 7
     f_kick = font(SANS_B, 11)
     d.text((x + 10, ty), kicker, font=f_kick, fill=dark(RED, 0.85))
     ty += 15
-    f_head = font(SERIF_B, 19)
+    f_head = font(SERIF_B, 21)
     head_lines = wrap(d, headline, f_head, w - 20)[:2]
     for i, line in enumerate(head_lines):
-        d.text((x + 10, ty + i * 21), line, font=f_head, fill=INK)
-    ty += 21 * len(head_lines) + 2
+        d.text((x + 10, ty + i * 23), line, font=f_head, fill=INK)
+    ty += 23 * len(head_lines) + 2
     f_deck = font(SANS, 12)
     max_deck = max(0, (y + h - 4 - ty) // 15)
     for i, line in enumerate(wrap(d, deck, f_deck, w - 20)[:max_deck]):
@@ -541,9 +590,10 @@ def hero_panel(d, x, y, w, h, num, kicker, scene, headline, deck):
 
 def card_panel(d, x, y, w, h, num, kicker, scene, headline, deck,
                bg=(255, 255, 255), accent=RED):
+    """v4: art 58px, headline 14px serif. Scenes fixed (see EU scene)."""
     d.rectangle([x, y, x + w, y + h], fill=bg, outline=PANEL_LINE, width=1)
     d.rectangle([x, y, x + w, y + 5], fill=accent)
-    ih = 60
+    ih = 58
     scene_scaled(d, scene, x + 1, y + 6, w - 2, ih - 1)
     d.line([(x, y + 5 + ih), (x + w, y + 5 + ih)], fill=PANEL_LINE, width=1)
     number_circle(d, x + 14, y + 16, num, r=11)
@@ -562,28 +612,35 @@ def card_panel(d, x, y, w, h, num, kicker, scene, headline, deck,
         d.text((x + 8, ty + i * 13), line, font=f_deck, fill=DECK)
 
 
-# Dotted world map: 30 columns x 11 rows, '#' = land.
+# Dotted world map: 32 columns x 12 rows, '#' = land. v4: denser and
+# more recognisable than v3's 30x11 (SE Asia islands + Australia added).
 MAP_ROWS = [
-    "..####..................######..",
-    ".######....###..###...#########.",
-    "..#####....####.###..##########.",
-    "...####.....########.########..",
-    "....##.......######..######....",
-    ".....##......#####....###......",
-    ".....###.....####....##........",
-    "......##......###.............",
-    "......##......##.....####.....",
-    ".......#..............###.....",
-    "......................##.....",
+    "..#####......##.......#########.",
+    ".########....##......##########.",
+    "..########.........############.",
+    "...######..........##########...",
+    "....####....###....########.....",
+    ".....###....####....######..##..",
+    ".....###.....###.....####..##...",
+    "......##.....##......##.........",
+    "......##............##...####...",
+    ".......#.................####...",
+    "..........................##....",
+    "................................",
 ]
-MAP_PINS = [  # (col, row, label) — key story locations
-    (2, 1, "ALASKA"), (5, 2, "WASHINGTON"), (14, 2, "THE HAGUE"),
-    (16, 2, "KYIV"), (15, 4, "GAZA"), (24, 2, "SHENZHEN"),
-    (20, 4, "NEW DELHI"), (16, 4, "RIYADH"), (25, 8, "CANBERRA"),
+# (col, row, story number) — key story locations. #4 (Voyager 1) has
+# no place on Earth, so it is explained in the legend instead.
+MAP_PINS = [  # v4: spread out — v3 positions overlapped in the NA/EU clusters
+    (5, 4, 1), (24, 2, 2), (14, 2, 3), (18, 2, 5), (16, 4, 6),
+    (3, 3, 7), (27, 9, 8), (23, 4, 9), (2, 1, 10), (6, 1, 11),
+    (18, 4, 12), (7, 2, 13),
 ]
 
 
 def world_map(d, x, y, w, h):
+    """v4: dark navy panel, gold dots, NUMBERED red pins (v3 was a
+    small light panel with tiny unnumbered dots)."""
+    d.rectangle([x, y, x + w, y + h], fill=NAVY)
     cols = len(MAP_ROWS[0])
     rows = len(MAP_ROWS)
     sx = w / cols
@@ -593,12 +650,17 @@ def world_map(d, x, y, w, h):
             if ch == "#":
                 cx = x + (c + 0.5) * sx
                 cy = y + (r + 0.5) * sy
-                d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=(120, 120, 120))
-    for c, r, _label in MAP_PINS:
+                d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2],
+                          fill=(198, 168, 90))
+    f_pin = font(SANS_B, 9)
+    for c, r, n in MAP_PINS:
         cx = x + (c + 0.5) * sx
         cy = y + (r + 0.5) * sy
-        d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], fill=RED,
+        d.ellipse([cx - 6, cy - 6, cx + 6, cy + 6], fill=RED,
                   outline=(255, 255, 255), width=1)
+        t = str(n)
+        tw = d.textlength(t, font=f_pin)
+        d.text((cx - tw / 2, cy - 5), t, font=f_pin, fill=(255, 255, 255))
 
 
 def also_on(d, x, y, w, h, items):
@@ -608,7 +670,7 @@ def also_on(d, x, y, w, h, items):
     col_w = (w - 2 * 12) // 3
     f_item = font(SANS, 11)
     f_num = font(SANS_B, 11)
-    pitch = 24
+    pitch = 19  # v4: tighter pitch so 37 items fit the shorter bottom zone
     per_col = [13, 12, 12]
     idx = 0
     for ci, count in enumerate(per_col):
@@ -616,7 +678,7 @@ def also_on(d, x, y, w, h, items):
         for j in range(count):
             num, headline = items[idx]
             idx += 1
-            iy = y + 34 + j * pitch
+            iy = y + 32 + j * pitch
             d.text((cx, iy), f"{num}.", font=f_num, fill=RED)
             num_w = d.textlength(f"{num}. ", font=f_num)
             # truncate the headline to one fitting line
@@ -628,18 +690,19 @@ def also_on(d, x, y, w, h, items):
 
 
 def date_check(d, x, y, w, h):
+    """v4 compact: fits a 60px box under the map legend."""
     d.rectangle([x, y, x + w, y + h], outline=RED, width=2)
-    d.rectangle([x, y, x + w, y + 24], fill=RED)
-    f_h = font(SANS_B, 13)
-    d.text((x + 10, y + 5), "DATE CHECK", font=f_h, fill=(255, 255, 255))
-    f_b = font(SERIF_B, 15)
-    d.text((x + 10, y + 32), "Thursday 19 November 2026", font=f_b, fill=INK)
-    f_s = font(SANS, 11)
+    d.rectangle([x, y, x + w, y + 18], fill=RED)
+    f_h = font(SANS_B, 11)
+    d.text((x + 8, y + 3), "DATE CHECK", font=f_h, fill=(255, 255, 255))
+    f_b = font(SERIF_B, 12)
+    d.text((x + 8, y + 21), "Thursday 19 November 2026", font=f_b, fill=INK)
+    f_s = font(SANS, 10)
     for i, line in enumerate(wrap(d, "All 50 stories verified from reports "
                                   "published on the day. Sources: Reuters, "
-                                  "AP, AFP, NASA, ICJ, IMF — see STORIES.md.",
-                                  f_s, w - 20)):
-        d.text((x + 10, y + 54 + i * 14), line, font=f_s, fill=DECK)
+                                  "AP, AFP, NASA, ICJ, IMF.",
+                                  f_s, w - 16)):
+        d.text((x + 8, y + 36 + i * 12), line, font=f_s, fill=DECK)
 
 
 def footer(d):
@@ -657,7 +720,9 @@ def main():
     IMG = img
     d = ImageDraw.Draw(img)
     masthead(d)
+    deck_line(d)
     region_bar(d)
+    kpi_strip(d)
     # --- three big illustrated lead stories -------------------------------
     heroes = [
         (1, "WORLD  •  GLOBAL", scene_vice_city,
@@ -673,8 +738,8 @@ def main():
     ]
     gap = 8
     hw = (CW - 2 * gap) // 3
-    hh = 208
-    hy = 120
+    hh = 212
+    hy = 205
     for i, (num, kick, scene, head, deck) in enumerate(heroes):
         hero_panel(d, MX + i * (hw + gap), hy, hw, hh,
                    num, kick, scene, head, deck)
@@ -724,8 +789,8 @@ def main():
     ]
     cgap = 6
     pw = (CW - 4 * cgap) // 5
-    ph = 144
-    py = 336
+    ph = 140
+    py = 425
     for row in range(2):
         for col in range(5):
             p = panels[row * 5 + col]
@@ -733,24 +798,30 @@ def main():
                        pw, ph, 4 + row * 5 + col,
                        p[0], p[1], p[2], p[3], bg=p[4], accent=p[5])
     # --- bottom zone: map + DATE CHECK (left), ALSO ON list (right) -------
-    by = 638
-    bh = 352
-    map_w = 292
+    by = 721
+    bh = 275
+    map_w = 304
     d.rectangle([MX, by, MX + map_w, by + bh], fill=(255, 255, 255),
                 outline=PANEL_LINE, width=1)
     f_map = font(SANS_B, 13)
     d.text((MX + 10, by + 8), "WHERE IT HAPPENED", font=f_map, fill=RED)
-    world_map(d, MX + 10, by + 32, map_w - 20, 150)
-    date_check(d, MX + 10, by + 192, map_w - 20, bh - 202)
+    world_map(d, MX + 10, by + 30, map_w - 20, 148)
+    f_leg = font(SANS, 10)
+    d.text((MX + 10, by + 182),
+           "Red numbers mark stories 1–13. No. 4, Voyager 1,",
+           font=f_leg, fill=DECK)
+    d.text((MX + 10, by + 195), "is a light-day out in deep space.",
+           font=f_leg, fill=DECK)
+    date_check(d, MX + 10, by + 212, map_w - 20, 60)
     also_items = [
-        (14, "Coalition meets in Berlin on Ukraine"),
+        (14, "Berlin talks on Ukraine"),
         (15, "Russian strike kills 4 in Odesa"),
         (16, "Lavrov accuses France on troops"),
         (17, "IMF lifts Germany growth to 1.3%"),
         (18, "Drought hits 82% of England"),
         (19, "LPG tanker sunk in the Black Sea"),
         (20, "ATP Finals: Zverev faces Fils"),
-        (21, "Board of Peace faults Israel, Hamas"),
+        (21, "Board of Peace faults both sides"),
         (22, "Iran hits US airbase in Kuwait"),
         (23, "US jets hit Qeshm missile site"),
         (24, "IMF unlocks $2.3bn for Egypt"),
@@ -765,7 +836,7 @@ def main():
         (33, "Japan visitors hit record 3.91m"),
         (34, "ASEAN advances digital pact"),
         (35, "ASEAN chief visits Pakistan"),
-        (36, "Anthropic debuts on Nasdaq at $83"),
+        (36, "Anthropic debuts on Nasdaq"),
         (37, "Nvidia posts $115.8bn quarter"),
         (38, "Fed minutes back a rate rise"),
         (39, "Dow falls 561 points"),
@@ -775,11 +846,11 @@ def main():
         (43, "Jeffries nominated House Speaker"),
         (44, "Newsom seeks AI kill-switch"),
         (45, "SpaceX launches secret USSF-317"),
-        (46, "Australia reserves gas for home use"),
+        (46, "Australia keeps gas for home use"),
         (47, "Kelp wins a seat at COP31"),
         (48, "COP31 deadlocked on fossil fuels"),
         (49, "COP31 urged to tax big polluters"),
-        (50, "Oracle patches 655 flaws, 948 CVEs"),
+        (50, "Oracle patches 655 flaws"),
     ]
     also_on(d, MX + map_w + 8, by, CW - map_w - 8, bh, also_items)
     footer(d)
